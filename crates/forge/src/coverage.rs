@@ -87,6 +87,63 @@ impl CoverageReporter for CoverageSummaryReporter {
     }
 }
 
+/// A summary reporter that prints the coverage results as a GitHub-flavored markdown table.
+pub struct CoverageMarkdownReporter {
+    table: Table,
+    total: CoverageSummary,
+}
+
+impl Default for CoverageMarkdownReporter {
+    fn default() -> Self {
+        let mut table = Table::new();
+        table.load_preset(comfy_table::presets::ASCII_MARKDOWN);
+
+        table.set_header(vec![
+            Cell::new("File"),
+            Cell::new("% Lines"),
+            Cell::new("% Statements"),
+            Cell::new("% Branches"),
+            Cell::new("% Funcs"),
+        ]);
+
+        Self { table, total: CoverageSummary::default() }
+    }
+}
+
+impl CoverageMarkdownReporter {
+    fn add_row(&mut self, name: impl ToString, summary: CoverageSummary) {
+        let mut row = Row::new();
+        row.add_cell(Cell::new(name.to_string()))
+            .add_cell(format_cell_plain(summary.line_hits, summary.line_count))
+            .add_cell(format_cell_plain(summary.statement_hits, summary.statement_count))
+            .add_cell(format_cell_plain(summary.branch_hits, summary.branch_count))
+            .add_cell(format_cell_plain(summary.function_hits, summary.function_count));
+        self.table.add_row(row);
+    }
+}
+
+impl CoverageReporter for CoverageMarkdownReporter {
+    fn name(&self) -> &'static str {
+        "markdown"
+    }
+
+    fn report(&mut self, report: &CoverageReport) -> eyre::Result<()> {
+        for (path, summary) in report.summary_by_file() {
+            self.total.merge(&summary);
+            self.add_row(path.display(), summary);
+        }
+
+        self.add_row("Total", self.total.clone());
+        sh_println!("\n{}", self.table)?;
+        Ok(())
+    }
+}
+
+fn format_cell_plain(hits: usize, total: usize) -> Cell {
+    let percentage = if total == 0 { 1. } else { hits as f64 / total as f64 };
+    Cell::new(format!("{:.2}% ({hits}/{total})", percentage * 100.))
+}
+
 fn format_cell(hits: usize, total: usize) -> Cell {
     let percentage = if total == 0 { 1. } else { hits as f64 / total as f64 };
 

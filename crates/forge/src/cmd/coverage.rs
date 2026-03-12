@@ -1,7 +1,7 @@
 use super::{install, test::TestArgs, watch::WatchArgs};
 use crate::coverage::{
-    BytecodeReporter, ContractId, CoverageReport, CoverageReporter, CoverageSummaryReporter,
-    DebugReporter, ItemAnchor, LcovReporter,
+    BytecodeReporter, ContractId, CoverageMarkdownReporter, CoverageReport, CoverageReporter,
+    CoverageSummaryReporter, DebugReporter, ItemAnchor, LcovReporter,
     analysis::{SourceAnalysis, SourceFiles},
     anchors::find_anchors,
 };
@@ -122,6 +122,9 @@ impl CoverageArgs {
                     root.to_path_buf(),
                     root.join("bytecode-coverage"),
                 )),
+                CoverageReportKind::Markdown => {
+                    Box::<CoverageMarkdownReporter>::default() as Box<dyn CoverageReporter>
+                }
                 CoverageReportKind::Debug => Box::new(DebugReporter),
             })
             .collect::<Vec<_>>();
@@ -333,6 +336,7 @@ pub enum CoverageReportKind {
     Lcov,
     Debug,
     Bytecode,
+    Markdown,
 }
 
 /// Helper function that will link references in unlinked bytecode to the 0 address.
